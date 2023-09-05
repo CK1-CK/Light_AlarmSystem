@@ -44,5 +44,8 @@ apt install -y python3-smbus i2c-tools
 ```
 ***Alternative:***
 ```
+pip install smbus
 pip install smbus2
+pip3 install smbus
+pip3 install smbus2
 ```
