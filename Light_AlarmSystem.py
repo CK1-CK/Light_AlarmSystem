@@ -4,6 +4,7 @@
 import time
 import datetime as dt
 from pathlib import Path
+import subprocess
 
 DEVICE     = 0x23
 POWER_DOWN = 0x00
@@ -12,6 +13,7 @@ RESET      = 0x07
 LastAlarmFileName="LastAlarm.txt"
 LightLimit=1000
 AlarmPause= 600 #in Seconds
+AlarmText="ACHTUNG Seecontainer: Tür offen!"
 #bus = smbus.SMBus(1)
 
 def convertToNumber(data):
@@ -29,8 +31,9 @@ def checkLightForAlarm(lux):
   else:
     return False
 def sendTelegramAlarmPackage():
-  print("Alarm")
-  #todo
+  print("Alarm: "+AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S"))
+  #subprocess.run(["SendTelegram_Raspberry.sh", AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")])
+  #subprocess.run(["SendTelegram_SeeContainer.sh", AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")])
 
 def writeLastAlarmTime():
   currentTime=dt.datetime.now()
@@ -53,11 +56,11 @@ def diffLastAlarmToNow():
 
 def main():
   #Init
-  path = Path(LastAlarmFileName) #'./LastAlarmFileName'
+  path = Path(LastAlarmFileName)
   if not path.is_file(): #Create File if it doesn't exist
     writeLastAlarmTime()
 
-  #Main
+  #Check Alarmlevel
   lightLevel=readLight()
   print (format(lightLevel,'.2f') + " lux")
   if checkLightForAlarm(lightLevel):
