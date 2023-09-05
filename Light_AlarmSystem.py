@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-###import smbus
+import smbus
 import time
 import datetime as dt
 from pathlib import Path
@@ -14,16 +14,16 @@ LastAlarmFileName="LastAlarm.txt"
 LightLimit=1000
 AlarmPause= 600 #in Seconds
 AlarmText="ACHTUNG Seecontainer: Tür offen!"
-#bus = smbus.SMBus(1)
+bus = smbus.SMBus(1)
 
 def convertToNumber(data):
   result=(data[1] + (256 * data[0])) / 1.2
   return (result)
 
 def readLight(addr=DEVICE):
-  #data = bus.read_i2c_block_data(addr,0x20)
-  #return convertToNumber(data)
-  return 2000
+  data = bus.read_i2c_block_data(addr,0x20)
+  return convertToNumber(data)
+  #return 2000
 
 def checkLightForAlarm(lux):
   if lux >= LightLimit:
@@ -32,8 +32,8 @@ def checkLightForAlarm(lux):
     return False
 def sendTelegramAlarmPackage():
   print("Alarm: "+AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S"))
-  #subprocess.run(["SendTelegram_Raspberry.sh", AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")])
-  #subprocess.run(["SendTelegram_SeeContainer.sh", AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")])
+  subprocess.run(["SendTelegram_Raspberry.sh", AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")]) #Testing only
+  #subprocess.run(["SendTelegram_SeeContainer.sh", AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")]) #Produktive System
 
 def writeLastAlarmTime():
   currentTime=dt.datetime.now()
