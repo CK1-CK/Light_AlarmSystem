@@ -1,5 +1,15 @@
 # Raspberry PI - Licht Alarmanlage
 
+## Allgemein
+
+Das Projekt dient als "Alarmanlage" welche mittels Lichtsensor (siehe Handware) getriggert wird.
+Sollte es in dem eingesetzen Raum hell werden (Lichtschwelle überschritten), wird eine Nachricht an eine Telegram Gruppe versandt.
+Der Alarm wird nur alle n Minuten ausgelöst.
+
+**Hardware:**
+- GY-302 BH1750 Lichtsensor (I2C)
+- Raspberry
+
 ## Anschluss/Verkabelung
 
 ***Raspberry PI Model B Rev 2***
