@@ -1,7 +1,8 @@
 # Raspberry PI - Licht Alarmanlage
 
-## Anschluss/Verkabelung PI 1b
+## Anschluss/Verkabelung
 
+***Raspberry PI Model B Rev 2***
 ```
 +=====+========+===============+
 | PIN | Raspi  | BH1750/GY-302 |
@@ -30,6 +31,8 @@ raspi-config nonint do_i2c 0
 ### i2c Module installieren
 ```
 apt install -y python3-smbus i2c-tools
+```
 ***Alternative:***
+```
 pip install smbus2
 ```
