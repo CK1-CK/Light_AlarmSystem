@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import smbus
+#import smbus
 import time
 import datetime as dt
 from pathlib import Path
@@ -10,39 +10,51 @@ DEVICE     = 0x23
 POWER_DOWN = 0x00
 POWER_ON   = 0x01
 RESET      = 0x07
-LastAlarmFileName="LastAlarm.txt"
+pathLastAlarmFileName="/home/pi/MeineDateien/LastAlarm.txt"
 LightLimit=1000
+WatchDogTime=60*60 #60Sek*60Min*24Min --> OnePackage per day. Either Alarm or Watchdog Package
 AlarmPause= 600 #in Seconds
 AlarmText="ACHTUNG Seecontainer: Tür offen!"
-bus = smbus.SMBus(1)
+pathTelegramSendScripts="/home/pi/MeineDateien/"
+#bus = smbus.SMBus(1)
 
 def convertToNumber(data):
   result=(data[1] + (256 * data[0])) / 1.2
   return (result)
 
 def readLight(addr=DEVICE):
-  data = bus.read_i2c_block_data(addr,0x20)
-  return convertToNumber(data)
-  #return 2000
+ # data = bus.read_i2c_block_data(addr,0x20)
+  #return convertToNumber(data)
+  return 2000 #debug #todo
 
 def checkLightForAlarm(lux):
   if lux >= LightLimit:
     return True
   else:
     return False
+
+def checkTimeForWatchDog(timeInSeconds, lux):
+  if diffLastAlarmToNow() >= timeInSeconds:
+    sendTelegramWatchDogPackage(lux)
+
 def sendTelegramAlarmPackage():
   print("Alarm: "+AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S"))
-  subprocess.run(["SendTelegram_Raspberry.sh", AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")]) #Testing only
-  #subprocess.run(["SendTelegram_SeeContainer.sh", AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")]) #Produktive System
+  
+  subprocess.run([pathTelegramSendScripts+"SendTelegram_Raspberry.sh", "WatchDog-Signal: " + "%0A" + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")]) #Testing only
+  #subprocess.run([pathTelegramSendScripts+"SendTelegram_SeeContainer.sh", AlarmText + "%0A" + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")]) #Produktive System
+
+def sendTelegramWatchDogPackage(Light):
+  #print("WatchDog-Signal: " + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S"))  #Debug
+  subprocess.run([pathTelegramSendScripts+"SendTelegram_Raspberry.sh", "WatchDog-Signal: " + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S") +"%0A"+"Lichtwert (Lux): "+ str(Light)]) # "%0A" --> Line Break
 
 def writeLastAlarmTime():
   currentTime=dt.datetime.now()
-  fileLastAlarm = open(LastAlarmFileName,'w')
+  fileLastAlarm = open(pathLastAlarmFileName,'w')
   fileLastAlarm.write(str(currentTime.strftime("%Y-%m-%d %H:%M:%S")))
   fileLastAlarm.close()
 
 def readLastAlarmTime():
-  fileLastAlarm = open(LastAlarmFileName,'r')
+  fileLastAlarm = open(pathLastAlarmFileName,'r')
   strLastAlarm=fileLastAlarm.read()
   fileLastAlarm.close()
   return strLastAlarm
@@ -56,7 +68,7 @@ def diffLastAlarmToNow():
 
 def main():
   #Init
-  path = Path(LastAlarmFileName)
+  path = Path(pathLastAlarmFileName)
   if not path.is_file(): #Create File if it doesn't exist
     writeLastAlarmTime()
 
@@ -67,6 +79,8 @@ def main():
     if diffLastAlarmToNow() >= AlarmPause:
       sendTelegramAlarmPackage()
       writeLastAlarmTime()
+
+  checkTimeForWatchDog(WatchDogTime, lightLevel) #Send WatchDog Signal every n Seconds
 
 
 if __name__=="__main__":
