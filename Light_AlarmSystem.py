@@ -5,17 +5,22 @@ import time
 import datetime as dt
 from pathlib import Path
 import subprocess
+import pathlib
 
 DEVICE     = 0x23
 POWER_DOWN = 0x00
 POWER_ON   = 0x01
 RESET      = 0x07
-pathLastAlarmFileName="/home/pi/MeineDateien/LastAlarm.txt"
+
+pathFolder=str(pathlib.Path(__file__).parent.absolute())+"/"
+FileNameLastAlarm="LastAlarm.txt"
+FileNameLastWatchDog="LastWatchDog.txt"
+
 LightLimit=1000
-WatchDogTime=60*60 #60Sek*60Min*24Min --> OnePackage per day. Either Alarm or Watchdog Package
+WatchDogTime=60*60 #60Sek*60Min*24h --> OnePackage per day. #todo
 AlarmPause= 600 #in Seconds
 AlarmText="ACHTUNG Seecontainer: Tür offen!"
-pathTelegramSendScripts="/home/pi/MeineDateien/"
+pathTelegramSendScripts=pathFolder
 #bus = smbus.SMBus(1)
 
 def convertToNumber(data):
@@ -33,55 +38,61 @@ def checkLightForAlarm(lux):
   else:
     return False
 
-def checkTimeForWatchDog(timeInSeconds, lux):
-  if diffLastAlarmToNow() >= timeInSeconds:
-    sendTelegramWatchDogPackage(lux)
-
-def sendTelegramAlarmPackage():
-  print("Alarm: "+AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S"))
+def sendTelegramAlarmPackage(Light):
+  #print("Alarm: "+AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")) #Debug
   
-  subprocess.run([pathTelegramSendScripts+"SendTelegram_Raspberry.sh", "WatchDog-Signal: " + "%0A" + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")]) #Testing only
-  #subprocess.run([pathTelegramSendScripts+"SendTelegram_SeeContainer.sh", AlarmText + "%0A" + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")]) #Produktive System
+  subprocess.run([pathTelegramSendScripts+"SendTelegram_Raspberry.sh", AlarmText + "%0A" + dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S") +"%0A"+"Lichtwert (Lux): "+ str(Light)]) #Testing only
+  #subprocess.run([pathTelegramSendScripts+"SendTelegram_SeeContainer.sh", AlarmText + "%0A" + dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S") +"%0A"+"Lichtwert (Lux): "+ str(Light)]) #Produktive System
 
 def sendTelegramWatchDogPackage(Light):
   #print("WatchDog-Signal: " + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S"))  #Debug
-  subprocess.run([pathTelegramSendScripts+"SendTelegram_Raspberry.sh", "WatchDog-Signal: " + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S") +"%0A"+"Lichtwert (Lux): "+ str(Light)]) # "%0A" --> Line Break
+  subprocess.run([pathTelegramSendScripts+"SendTelegram_Raspberry.sh", "WatchDog-Signal: " + dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S") +"%0A"+"Lichtwert (Lux): "+ str(Light)]) # "%0A" --> Line Break
 
-def writeLastAlarmTime():
+def writeLastTimeToFile(filePath):
   currentTime=dt.datetime.now()
-  fileLastAlarm = open(pathLastAlarmFileName,'w')
+  fileLastAlarm = open(filePath,'w')
   fileLastAlarm.write(str(currentTime.strftime("%Y-%m-%d %H:%M:%S")))
   fileLastAlarm.close()
 
-def readLastAlarmTime():
-  fileLastAlarm = open(pathLastAlarmFileName,'r')
+def readLastTimeFromFile(filePath):
+  fileLastAlarm = open(filePath,'r')
   strLastAlarm=fileLastAlarm.read()
   fileLastAlarm.close()
   return strLastAlarm
 
-def diffLastAlarmToNow():
+def diffLastEventToNow(filePath):
   currentTime=dt.datetime.now()
-  strLastAlarm=readLastAlarmTime()
+  strLastAlarm=readLastTimeFromFile(filePath)
   LastAlarm= dt.datetime.strptime(strLastAlarm, "%Y-%m-%d %H:%M:%S")
   delta = currentTime.replace(microsecond=0) - LastAlarm
   return delta.total_seconds()
 
 def main():
   #Init
-  path = Path(pathLastAlarmFileName)
-  if not path.is_file(): #Create File if it doesn't exist
-    writeLastAlarmTime()
+  pathAlarm = Path(pathFolder+FileNameLastAlarm)
+  if not pathAlarm.is_file(): #Create File if it doesn't exist
+    print("Alarm File not found")
+    writeLastTimeToFile(pathFolder+FileNameLastAlarm)
+  
+  pathWatchDog = Path(pathFolder+FileNameLastWatchDog)
+  if not pathWatchDog.is_file(): #Create File if it doesn't exist
+    print("WatchDog File not found")
+    writeLastTimeToFile(pathFolder+FileNameLastWatchDog)
 
   #Check Alarmlevel
   lightLevel=readLight()
   print (format(lightLevel,'.2f') + " lux")
+  
+  #Alarm Check
   if checkLightForAlarm(lightLevel):
-    if diffLastAlarmToNow() >= AlarmPause:
-      sendTelegramAlarmPackage()
-      writeLastAlarmTime()
+    if diffLastEventToNow(pathFolder+FileNameLastAlarm) >= AlarmPause:
+      sendTelegramAlarmPackage(lightLevel)
+      writeLastTimeToFile(pathFolder+FileNameLastAlarm)
 
-  checkTimeForWatchDog(WatchDogTime, lightLevel) #Send WatchDog Signal every n Seconds
-
+  #WatchDog Check - Send WatchDog Signal every n Seconds
+  if diffLastEventToNow(pathFolder+FileNameLastWatchDog) >= WatchDogTime:
+    sendTelegramWatchDogPackage(lightLevel)
+    writeLastTimeToFile(pathFolder+FileNameLastWatchDog)
 
 if __name__=="__main__":
    main()
