@@ -96,8 +96,8 @@ def main():
     try:
       lightLevel=readLight() #Read Light Level
       #print (format(lightLevel,'.2f') + " lux") #Debug
-    except:
-      print("Fehler I2C!")
+    except Exception as e:
+      print("Fehler I2C! "+ str(e))
       return -1
     
     #Alarm Check
