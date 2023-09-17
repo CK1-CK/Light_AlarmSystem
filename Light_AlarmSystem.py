@@ -21,7 +21,7 @@ WatchDogTime=60*60 #in Seconds -->60Sek*60Min*12h --> 2 Packages per day. #todo
 AlarmPause= 600 #in Seconds
 AlarmText="ACHTUNG Seecontainer: Tür offen!"
 pathTelegramSendScripts=pathFolder
-#bus = smbus.SMBus(1)
+bus = smbus.SMBus(1)
 
 def convertToNumber(data):
   result=(data[1] + (256 * data[0])) / 1.2
