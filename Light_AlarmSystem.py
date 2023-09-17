@@ -17,7 +17,7 @@ FileNameLastAlarm="LastAlarm.txt"
 FileNameLastWatchDog="LastWatchDog.txt"
 
 LightLimit=1000
-WatchDogTime=60*60 #60Sek*60Min*24h --> OnePackage per day. #todo
+WatchDogTime=60*60 #60Sek*60Min*12h --> 2 Packages per day. #todo
 AlarmPause= 600 #in Seconds
 AlarmText="ACHTUNG Seecontainer: Tür offen!"
 pathTelegramSendScripts=pathFolder
@@ -79,20 +79,23 @@ def main():
     print("WatchDog File not found")
     writeLastTimeToFile(pathFolder+FileNameLastWatchDog)
 
-  #Check Alarmlevel
-  lightLevel=readLight()
-  print (format(lightLevel,'.2f') + " lux")
-  
-  #Alarm Check
-  if checkLightForAlarm(lightLevel):
-    if diffLastEventToNow(pathFolder+FileNameLastAlarm) >= AlarmPause:
-      sendTelegramAlarmPackage(lightLevel)
-      writeLastTimeToFile(pathFolder+FileNameLastAlarm)
-
-  #WatchDog Check - Send WatchDog Signal every n Seconds
-  if diffLastEventToNow(pathFolder+FileNameLastWatchDog) >= WatchDogTime:
-    sendTelegramWatchDogPackage(lightLevel)
-    writeLastTimeToFile(pathFolder+FileNameLastWatchDog)
+  while True:
+    #Check Alarmlevel
+    lightLevel=readLight()
+    #print (format(lightLevel,'.2f') + " lux") #Debug
+    
+    #Alarm Check
+    if checkLightForAlarm(lightLevel):
+      if diffLastEventToNow(pathFolder+FileNameLastAlarm) >= AlarmPause:
+        sendTelegramAlarmPackage(lightLevel)
+        writeLastTimeToFile(pathFolder+FileNameLastAlarm)
+    else:
+      #WatchDog Check - Send WatchDog Signal every n Seconds
+      if diffLastEventToNow(pathFolder+FileNameLastWatchDog) >= WatchDogTime:
+        sendTelegramWatchDogPackage(lightLevel)
+        writeLastTimeToFile(pathFolder+FileNameLastWatchDog)
+    
+    time.sleep(30)
 
 if __name__=="__main__":
    main()
