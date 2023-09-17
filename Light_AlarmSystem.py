@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-#import smbus
+import smbus
 import time
 import datetime as dt
 from pathlib import Path
@@ -17,7 +17,7 @@ FileNameLastAlarm="LastAlarm.txt"
 FileNameLastWatchDog="LastWatchDog.txt"
 
 LightLimit=1000
-WatchDogTime=60*60 #60Sek*60Min*12h --> 2 Packages per day. #todo
+WatchDogTime=60*60 #in Seconds -->60Sek*60Min*12h --> 2 Packages per day. #todo
 AlarmPause= 600 #in Seconds
 AlarmText="ACHTUNG Seecontainer: Tür offen!"
 pathTelegramSendScripts=pathFolder
@@ -28,9 +28,9 @@ def convertToNumber(data):
   return (result)
 
 def readLight(addr=DEVICE):
- # data = bus.read_i2c_block_data(addr,0x20)
-  #return convertToNumber(data)
-  return 2000 #debug #todo
+  data = bus.read_i2c_block_data(addr,0x20)
+  return convertToNumber(data)
+  #return 2000 #debug #todo
 
 def checkLightForAlarm(lux):
   if lux >= LightLimit:
@@ -50,15 +50,27 @@ def sendTelegramWatchDogPackage(Light):
 
 def writeLastTimeToFile(filePath):
   currentTime=dt.datetime.now()
-  fileLastAlarm = open(filePath,'w')
-  fileLastAlarm.write(str(currentTime.strftime("%Y-%m-%d %H:%M:%S")))
-  fileLastAlarm.close()
+  try:
+    fileLastAlarm = open(filePath,'w')
+    try:
+      fileLastAlarm.write(str(currentTime.strftime("%Y-%m-%d %H:%M:%S")))
+    except:
+      print("Error write File.")
+    finally:    
+      fileLastAlarm.close()
+  except:
+    print("Error: Couldn't load file.")
+    return -1
 
 def readLastTimeFromFile(filePath):
-  fileLastAlarm = open(filePath,'r')
-  strLastAlarm=fileLastAlarm.read()
-  fileLastAlarm.close()
-  return strLastAlarm
+  try:
+    fileLastAlarm = open(filePath,'r')
+    strLastAlarm=fileLastAlarm.read()
+  except:
+    print("Error: Couldn't load file.")
+  finally:
+    fileLastAlarm.close()
+    return strLastAlarm
 
 def diffLastEventToNow(filePath):
   currentTime=dt.datetime.now()
@@ -81,19 +93,29 @@ def main():
 
   while True:
     #Check Alarmlevel
-    lightLevel=readLight()
-    #print (format(lightLevel,'.2f') + " lux") #Debug
+    try:
+      lightLevel=readLight() #Read Light Level
+      #print (format(lightLevel,'.2f') + " lux") #Debug
+    except:
+      print("Fehler I2C!")
+      return -1
     
     #Alarm Check
     if checkLightForAlarm(lightLevel):
       if diffLastEventToNow(pathFolder+FileNameLastAlarm) >= AlarmPause:
-        sendTelegramAlarmPackage(lightLevel)
-        writeLastTimeToFile(pathFolder+FileNameLastAlarm)
+        try:
+          sendTelegramAlarmPackage(lightLevel)
+          writeLastTimeToFile(pathFolder+FileNameLastAlarm)
+        except:
+          print("Error: Couldn't send Telegram Message")
     else:
       #WatchDog Check - Send WatchDog Signal every n Seconds
       if diffLastEventToNow(pathFolder+FileNameLastWatchDog) >= WatchDogTime:
-        sendTelegramWatchDogPackage(lightLevel)
-        writeLastTimeToFile(pathFolder+FileNameLastWatchDog)
+        try:
+          sendTelegramWatchDogPackage(lightLevel)
+          writeLastTimeToFile(pathFolder+FileNameLastWatchDog)
+        except:
+          print("Error: Couldn't send Telegram Message")
     
     time.sleep(30)
 
