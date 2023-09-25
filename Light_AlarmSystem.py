@@ -16,7 +16,7 @@ pathFolder=str(pathlib.Path(__file__).parent.absolute())+"/"
 FileNameLastAlarm="LastAlarm.txt"
 FileNameLastWatchDog="LastWatchDog.txt"
 
-LightLimit=1000
+LightLimit=5 #[Lux]
 WatchDogTime=60*60 #in Seconds -->60Sek*60Min*12h --> 2 Packages per day. #todo
 AlarmPause= 600 #in Seconds
 AlarmText="ACHTUNG Seecontainer: Tür offen!"
@@ -29,8 +29,7 @@ def convertToNumber(data):
 
 def readLight(addr=DEVICE):
   data = bus.read_i2c_block_data(addr,0x20)
-  return convertToNumber(data)
-  #return 2000 #debug #todo
+  return convertToNumber(data)   #return 2000 #debug #todo
 
 def checkLightForAlarm(lux):
   if lux >= LightLimit:
@@ -41,8 +40,8 @@ def checkLightForAlarm(lux):
 def sendTelegramAlarmPackage(Light):
   #print("Alarm: "+AlarmText + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S")) #Debug
   
-  subprocess.run([pathTelegramSendScripts+"SendTelegram_Raspberry.sh", AlarmText + "%0A" + dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S") +"%0A"+"Lichtwert (Lux): "+ str(Light)]) #Testing only
-  #subprocess.run([pathTelegramSendScripts+"SendTelegram_SeeContainer.sh", AlarmText + "%0A" + dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S") +"%0A"+"Lichtwert (Lux): "+ str(Light)]) #Produktive System
+  #subprocess.run([pathTelegramSendScripts+"SendTelegram_Raspberry.sh", AlarmText + "%0A" + dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S") +"%0A"+"Lichtwert (Lux): "+ str(Light)]) #Testing only
+  subprocess.run([pathTelegramSendScripts+"SendTelegram_SeeContainer.sh", AlarmText + "%0A" + dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S") +"%0A"+"Lichtwert (Lux): "+ str(Light)]) #Prod System
 
 def sendTelegramWatchDogPackage(Light):
   #print("WatchDog-Signal: " + dt.datetime.now().strftime(" %Y-%m-%d %H:%M:%S"))  #Debug
@@ -91,19 +90,24 @@ def main():
     print("WatchDog File not found")
     writeLastTimeToFile(pathFolder+FileNameLastWatchDog)
 
+  sendTelegramWatchDogPackage(999)
+  lightLevel=readLight() #Initial Read Light Level.
+
   while True:
     #Check Alarmlevel
     try:
       lightLevel=readLight() #Read Light Level
-      #print (format(lightLevel,'.2f') + " lux") #Debug
+      print (format(lightLevel,'.2f') + " lux") #Debug
     except Exception as e:
       print("Fehler I2C! "+ str(e))
       return -1
     
     #Alarm Check
     if checkLightForAlarm(lightLevel):
+      print(str(diffLastEventToNow(pathFolder+FileNameLastAlarm)))
       if diffLastEventToNow(pathFolder+FileNameLastAlarm) >= AlarmPause:
         try:
+          subprocess.Popen(["/home/pi/MeineDateien/webcamBildTelegramSend.sh"]) #Runs Webcam Skript and don't wait till finish
           sendTelegramAlarmPackage(lightLevel)
           writeLastTimeToFile(pathFolder+FileNameLastAlarm)
         except:
@@ -117,7 +121,7 @@ def main():
         except:
           print("Error: Couldn't send Telegram Message")
     
-    time.sleep(30)
+    time.sleep(20)
 
 if __name__=="__main__":
    main()
