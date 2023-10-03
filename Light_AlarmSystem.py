@@ -13,6 +13,7 @@ POWER_ON   = 0x01
 RESET      = 0x07
 
 pathFolder=str(pathlib.Path(__file__).parent.absolute())+"/"
+#pathFolder="/home/pi/MeineDateien/Light_AlarmSystem/"
 FileNameLastAlarm="LastAlarm.txt"
 FileNameLastWatchDog="LastWatchDog.txt"
 
